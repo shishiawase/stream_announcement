@@ -2,6 +2,7 @@
 
 import httpx
 import discord
+import asyncio
 from random import randint
 from discord.ext import tasks
 from config import settings
@@ -46,15 +47,15 @@ async def stream_live(check_live):
 
     getStatus()
     if api_status.status_code == 200:
-        twitch = api_status.json()['data'][0]
+        twitch = api_status.json()['data']
 
         if twitch:
             if not check_live:
                 check_live = True
-                user_name = twitch['user_name']
-                game_name = twitch['game_name']
-                title = twitch['title']
-                img = twitch['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720')
+                user_name = twitch[0]['user_name']
+                game_name = twitch[0]['game_name']
+                title = twitch[0]['title']
+                img = twitch[0]['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720')
 
                 embed = discord.Embed(
                     color=randint(0, 0xFFFFFF),
@@ -71,11 +72,14 @@ async def stream_live(check_live):
                 await channel.send('@everyone', embed=embed)
                 
         else:
-            if check_live: check_live = False
+            if check_live:
+                check_live = False
     else: 
         twitch_token = ''
+        await asyncio.sleep(15)
+
         authorize()
-        stream_live(check_live)
+        stream_live.restart(check_live)
 
 @bot.event
 async def on_ready():
