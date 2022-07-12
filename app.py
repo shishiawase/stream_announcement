@@ -46,7 +46,7 @@ def user_ico():
     while res.status_code != 200:
         authorize()
         res = client.get('https://api.twitch.tv/helix/users', params=params, headers=headers)
-    return res['data'][0]['profile_image_url']
+    return res.json()['data'][0]['profile_image_url']
 
 ### TWITCH ####
 
@@ -61,6 +61,8 @@ async def stream_live():
     if 'twitch_token' not in globals(): authorize()
     
     twitch = getStream()
+    icon = user_ico()
+    print(icon)
 
     if twitch:
         if not check_live:
@@ -81,8 +83,8 @@ async def stream_live():
             embed.set_author(name=user_name, icon_url=icon, url=f"https://www.twitch.tv/{settings['channel_name']}")
             embed.set_image(url=img)
 
-            channel = bot.get_channel(settings['discord_channel'])
-            await channel.send('@everyone', embed=embed)
+            #channel = bot.get_channel(settings['discord_channel'])
+            #await channel.send('@everyone', embed=embed)
                 
     else:
         if check_live:
