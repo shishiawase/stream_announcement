@@ -2,7 +2,6 @@
 
 import httpx
 import discord
-import asyncio
 from random import randint
 from discord.ext import tasks
 from config import settings
@@ -22,17 +21,32 @@ def authorize():
     app_token_request = client.post('https://id.twitch.tv/oauth2/token', params=token_params)
     global twitch_token
     twitch_token = app_token_request.json()
-
-def getStatus():
+    global headers
     headers = {
         'Authorization': f"Bearer {twitch_token['access_token']}",
         'Client-Id': settings['client_id']
     }
+
+def getStream():
     params = {
         'user_login': settings['channel_name']
     }
-    global api_status
-    api_status = client.get('https://api.twitch.tv/helix/streams', params=params, headers=headers)
+    stream = client.get('https://api.twitch.tv/helix/streams', params=params, headers=headers)
+
+    while stream.status_code != 200:
+        authorize()
+        stream = client.get('https://api.twitch.tv/helix/streams', params=params, headers=headers)
+    return stream.json()['data']
+
+def user_ico():
+    params = {
+        'login': settings['channel_name']
+    }
+    res = client.get('https://api.twitch.tv/helix/users', params=params, headers=headers)
+    while res.status_code != 200:
+        authorize()
+        res = client.get('https://api.twitch.tv/helix/users', params=params, headers=headers)
+    return res['data'][0]['profile_image_url']
 
 ### TWITCH ####
 
@@ -41,49 +55,42 @@ def getStatus():
 check_live = False
 
 @tasks.loop(minutes=5)
-async def stream_live(check_live):
+async def stream_live():
 
+    global check_live
     if 'twitch_token' not in globals(): authorize()
+    
+    twitch = getStream()
 
-    getStatus()
-    if api_status.status_code == 200:
-        twitch = api_status.json()['data']
+    if twitch:
+        if not check_live:
+            check_live = True
+            user_name = twitch[0]['user_name']
+            game_name = twitch[0]['game_name']
+            title = twitch[0]['title']
+            img = twitch[0]['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720')
+            icon = user_ico()
 
-        if twitch:
-            if not check_live:
-                check_live = True
-                user_name = twitch[0]['user_name']
-                game_name = twitch[0]['game_name']
-                title = twitch[0]['title']
-                img = twitch[0]['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720')
+            embed = discord.Embed(
+                color=randint(0, 0xFFFFFF),
+                title=title,
+                url='https://www.twitch.tv/' + settings['channel_name'],
+                description=f"Началась трансляцию по игре - `{game_name}`.\nНу ты это, заходи если что!\nhttps://www.twitch.tv/{settings['channel_name']}"    
+            )
+            embed.set_thumbnail(url=icon)
+            embed.set_author(name=user_name, icon_url=icon, url=f"https://www.twitch.tv/{settings['channel_name']}")
+            embed.set_image(url=img)
 
-                embed = discord.Embed(
-                    color=randint(0, 0xFFFFFF),
-                    title=title,
-                    url='https://www.twitch.tv/' + settings['channel_name'],
-                    description=f"Началась трансляцию по игре - `{game_name}`.\nНу ты это, заходи если что!\nhttps://www.twitch.tv/{settings['channel_name']}"
-                    
-                )
-                embed.set_thumbnail(url=settings['channel_ico'])
-                embed.set_author(name=user_name, icon_url=settings['channel_ico'], url=f"https://www.twitch.tv/{settings['channel_name']}")
-                embed.set_image(url=img)
-
-                channel = bot.get_channel(settings['discord_channel'])
-                await channel.send('@everyone', embed=embed)
+            channel = bot.get_channel(settings['discord_channel'])
+            await channel.send('@everyone', embed=embed)
                 
-        else:
-            if check_live:
-                check_live = False
-    else: 
-        twitch_token = ''
-        await asyncio.sleep(15)
-
-        authorize()
-        stream_live.restart(check_live)
+    else:
+        if check_live:
+            check_live = False
 
 @bot.event
 async def on_ready():
     print(f"Logged in as: {bot.user.name}")
-    stream_live.start(check_live)
+    stream_live.start()
 
 bot.run(settings['discord_token'])
