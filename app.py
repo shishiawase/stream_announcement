@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import time
 import httpx
 import discord
 from random import randint
@@ -64,18 +65,19 @@ async def stream_live():
 
     if twitch:
         if not check_live:
+            t = time.time()
             check_live = True
             user_name = twitch[0]['user_name']
             game_name = twitch[0]['game_name']
             title = twitch[0]['title']
-            img = twitch[0]['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720')
+            img = twitch[0]['thumbnail_url'].replace("{width}", "1280").replace('{height}', '720') + '?rnd=' + t
             icon = user_ico()
 
             embed = discord.Embed(
                 color=randint(0, 0xFFFFFF),
                 title=title,
                 url='https://www.twitch.tv/' + settings['channel_name'],
-                description=f"Началась трансляцию по игре - `{game_name}`.\nНу ты это, заходи если что!\nhttps://www.twitch.tv/{settings['channel_name']}"    
+                description=f"Началась трансляция по игре - `{game_name}`.\nНу ты это, заходи если что!\nhttps://www.twitch.tv/{settings['channel_name']}"    
             )
             embed.set_thumbnail(url=icon)
             embed.set_author(name=user_name, icon_url=icon, url=f"https://www.twitch.tv/{settings['channel_name']}")
