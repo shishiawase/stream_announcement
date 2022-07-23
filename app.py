@@ -11,7 +11,7 @@ from config import settings
 client = httpx.Client()
 bot = discord.Client()
 
-### TWITCH ####
+### TWITCH ###
 
 def authorize():
     token_params = {
@@ -49,7 +49,7 @@ def user_ico():
         res = client.get('https://api.twitch.tv/helix/users', params=params, headers=headers)
     return res.json()['data'][0]['profile_image_url']
 
-### TWITCH ####
+### TWITCH ###
 
 
 ### DISCORD ###
