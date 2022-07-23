@@ -65,7 +65,7 @@ async def stream_live():
 
     if twitch:
         if not check_live:
-            t = time.time()
+            t = str(int(time.time()))
             check_live = True
             user_name = twitch[0]['user_name']
             game_name = twitch[0]['game_name']
